@@ -1,0 +1,25 @@
+## movieGoodCreate [/v1/movie/good/:movieId]
+
+### movieGoodCreate [POST]
+
+#### Khái quát xử lý
+
+* INSERT bằng thông tin đã nhận
+
+* Trường hợp [movie].[companyId] của movieId đã chỉ định != [companyId] của login user, trả lỗi quyền hạn
+* Trường hợp [movie].[status] của movieId đã chỉ định = `2:削除`, trả lỗi `[movieDeletedError]`
+* Trường hợp [movie].[commonMovieFlag] của movieId đã chỉ định = `1:有効`, trả lỗi `[commonMovieNotArrowedError]`
+* Trường hợp tồn tại data [movieGood] dưới đây, không làm gì cả và trả về status thành công
+    * [movieGood].[movieId] = [Parameters].[movieId] 
+    * [movieGood].[createBy] = [user].[id] của login user
+
+* INSERT như bên dưới
+    * Data [movieGood]
+        * [movieGood].[movieId] = [Parameters].[movieId]
+
++ Parameters
+    + movieId: `4` (string, required) - 動画id
+
++ Response 201 (application/json)
+    + Attributes (object)
+        + id: 1 (string, required) - 動画いいねid

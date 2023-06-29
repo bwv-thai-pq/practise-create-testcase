@@ -1,0 +1,28 @@
+## groupSearch [/v1/group]
+
+### groupSearch [GET]
+
+#### Khái quát xử lý
+
+* Trả về N record kết quả 
+* Sort theo hạng mục dưới đây rồi trả về 
+    * Trường hợp [Parameters].[sort] = `desc`, [Response].[displayOrder] giảm dần
+    * Trường hợp khác trên, [Response].[displayOrder] tăng dần
+
+* Chỉ trả về record có [group].[companyId] = [companyId] của login user
+* Trường hợp [Parameters].[needsAll] != `1:Yes` và [authority] của login user = `2:一般ユーザー`, không trả về record không tồn tại data ràng buộc ghi dưới đây
+    * Data [userGroup] (ràng buộc với [group] bằng [userGroup].[groupId]) có [userGroup].[userId] = [id] của login user
+
++ Parameters
+    + name: `nameAbc` (string, optional) - グループ名(Search LIKE)
+    + needsAll: `1` (string, optional) - 全返却フラグ
+    + sort: `asc` (string, optional) - ソート順
+    + limit: `30` (string, optional) - 取得件数
+    + offset: `2` (string, optional) - page数
+
++ Response 200 (application/json)
+    + Attributes (array, required, fixed-type)
+        + (object)
+            + id: `1` (string, required) - グループid
+            + name: `nameAbc` (string, required) - グループ名
+            + displayOrder: `4` (string, required) - 表示順

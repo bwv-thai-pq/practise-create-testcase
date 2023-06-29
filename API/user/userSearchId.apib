@@ -1,0 +1,102 @@
+## userSearchId [/v1/user/:id]
+
+### userSearchId [GET]
+
+#### Khái quát xử lý
+
+* Trả về 1 record thông tin của id đã chỉ định
+
+* Trường hợp id đã chỉ định có [user].[status] = `1:無効`, trả lỗi `404`
+* Trường hợp [user].[companyId] của [Parameters].[id] != [companyId] của login user, trả lỗi quyền hạn
+* Trường hợp thỏa tất cả điều kiện dưới đây, trả lỗi quyền hạn
+    * [user].[authority] của [Parameters].[id] = `0:システム管理者`
+    * [Parameters].[id] != [user].[id] của login user
+* Trường hợp thỏa tất cả điều kiện dưới đây, trả lỗi quyền hạn
+    * [user].[authority] của login user = `2:一般ユーザー`
+    * [Parameters].[id] != [user].[id] của login user
+
+* [Response].[user]
+    * Trả về data [user] của id đã chỉ định
+* [Response].[userMovie]
+    * Trả về data [movie] thỏa tất cả điều kiện dưới đây
+        * [movie].[createdBy] = [Parameters].[id]
+        * Trường hợp [Parameters].[id] = [user].[id] của login user
+            * [movie].[status] != `2:削除`
+        * Trường hợp [Parameters].[id] != [user].[id] của login user
+            * [movie].[status] = `0:有効` AND [movie].[convertingStatus] = `1:完了`
+    * Sort theo hạng mục dưới đây rồi trả về
+        * [Response].[userMovie].[movie].[createdAt] tăng dần
+    * [Response].[userMovie].[playedMovie]
+        * Trường hợp tồn tại data [movieViewHistory] thỏa tất cả điều kiện dưới đây, trả về `1:Yes`
+            * [movieViewHistory].[createBy] = [user].[id] của login user
+            * [movieViewHistory].[movieId] = [Response].[userMovie].[id]
+        * Trường hợp ngược lại, trả về `0:No`
+    * [Response].[yourGood]
+        * Trường hợp tồn tại data [movieGood] thỏa tất cả điều kiện dưới đây, trả về `1:Yes`
+            * [movieGood].[createBy] = [user].[id] của login user
+            * [movieGood].[movieId] = [Response].[movie].[id]
+        * Trường hợp ngược lại, trả về `0:No`
+    * [Response].[userMovie].[movieViewCount]
+        * Trả về số record data [movieViewHistory] có [movieViewHistory].[movieId] = [Response].[movie].[id] 
+    * [Response].[userMovie].[movieGoodCount]
+        * Trả về số record data [movieGood] có [movieGood].[movieId] = [Response].[movie].[id] 
+    * [Response].[userMovie].[movieCommentCount]
+        * Trả về số record data [movieComment] có [movieComment].[movieId] = [Response].[movie].[id] 
+    * [Response].[userGroup], [defaultPublicGroup]
+        * Trả về theo thứ tự [group].[displayOrder] tương ứng tăng dần
+
++ Parameters
+    + id: `1` (string, required) - ユーザid
+
++ Response 200 (application/json)
+    + Attributes (object, required)
+        + user: (object) - ユーザ情報
+            + id: `1` (string, required) - ユーザid
+            + authority: `1` (string, required) - 権限
+            + name: `userNameAbc` (string, required) - ユーザ名
+            + email: `user.email@example.com` (string, required) - email
+            + status: `0` (string, required) - ステータス
+            + imagePath: `CloudFrontURL` (string, optional) - 画像のCloudFrontURL
+            + adminFlag: `1` (string, optional) - 管理者フラグ
+            + mailDeliveryPermit: `1` (string, optional) - メール配信許可フラグ
+            + organization: (object) - 組織情報
+                + id: `1` (string, required) - 組織id
+                + name: `organizationNameAbc` (string, required) - 組織名
+                + displayOrder: `3` (string, required) - 表示順
+                + highOrganizationId: `72` (string, optional) - 上位組織id
+                + layerId: `1` (string, required) - 階層id
+            + userGroup: (array, optional, fixed-type) - ユーザグループ情報
+                + (object)
+                    + id: `1` (string, required) - ユーザグループid
+                    + group: (object) - グループ情報
+                        + id: `1` (string, required) - グループid
+                        + name: `nameAbc` (string, required) - グループ名
+                        + displayOrder: `3` (string, required) - 表示順
+            + defaultPublicGroup: (array, optional, fixed-type) - デフォルト公開グループ情報
+                + (object)
+                    + id: `1` (string, required) - デフォルト公開グループid
+                    + group: (object) - グループ情報
+                        + id: `1` (string, required) - グループid
+                        + name: `nameAbc` (string, required) - グループ名
+                        + displayOrder: `3` (string, required) - 表示順
+        + userMovie: (array, required, fixed-type) - ユーザ動画情報
+            + (object)
+                + playedMovie: `1` (string, required) - 動画再生済みフラグ
+                + yourGood: `1` (string, required) - 動画良いねフラグ
+                + movieViewCount: `1` (string, required) - 動画視聴回数
+                + movieGoodCount: `1` (string, required) - 動画いいね回数
+                + movieCommentCount: `1` (string, required) - 動画コメント数
+                + movie: (object) - 動画情報
+                    + id: `2` (string, required) - 動画id
+                    + title: `titleAbc` (string, required) - タイトル
+                    + description: `descriptionAbc` (string, optional) - 説明
+                    + type: `1` (string, required) - 区分
+                    + status: `0` (string, required) - ステータス
+                    + convertingStatus: `1` (string, required) - 変換ステータス
+                    + moviePath: `CloudFrontURL` (string, optional) - 動画のCloudFrontURL
+                    + thumbnailPath: `CloudFrontURL` (string, optional) - サムネイルのCloudFrontURL
+                    + recommend: `1` (string, required) - おすすめ
+                    + recommendDisplayOrder: `1` (string, required) - おすすめ表示順
+                    + commonMovieFlag: `1` (string, required) - 共通動画フラグ
+                    + createdAt: `2020/11/06 12:34:56` (string, required) - 登録日時
+                    + updatedAt: `2020/11/06 12:34:56` (string, required) - 更新日時

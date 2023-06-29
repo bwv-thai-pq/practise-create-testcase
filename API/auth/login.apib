@@ -1,0 +1,74 @@
+# Group auth
+
+## login [/v1/auth/login]
+
+### login [POST]
+
+#### Khái quát xử lý
+* Nếu thông tin user đã nhận trùng khớp thì phát hành TOKEN (trường hợp lỗi thì trả lỗi theo độ ưu tiên từ trên xuống)
+    * Trường hợp [user].[status] = `1:無効`, trả lỗi `[passwordError]`
+    * Trường hợp không khớp password, trả lỗi `[passwordError]`
+    * Trường hợp [user] thỏa điều kiện trên có [user].[authority] != 0 or 1 or 2, trả lỗi `[dataMismatchingError]`
+
+* Khi login thành công
+    * UPDATE như bên dưới
+        * Data [user] của email đã chỉ định
+            * [lastLoginAt] = system datetime (UTC)
+    * INSERT như bên dưới
+        * Data [refreshToken]
+            * [userId] = [user].[id] của email đã chỉ định
+            * [refreshToken] = refreshToken vừa tạo
+
+* Payload của [accessToken]
+        * id: [Response].[id]
+        * name: [Response].[name]
+        * email: [Response].[email]
+        * authority: [Response].[authority]
+        * imagePath: [Response].[imagePath]
+        * adminFlag: [Response].[adminFlag]
+        * hasEvaluatedRating: [Response].[hasEvaluatedRating]
+        * company{}:
+            * id: [Response].[company].[id]
+            * name: [Response].[company].[name]
+            * skillPaletteFlag: [Response].[company].[skillPaletteFlag]
+        * organization{}:
+            * id: [Response].[organization].[id]
+            * name: [Response].[organization].[name]
+            * displayOrder: [Response].[organization].[displayOrder]
+            * highOrganizationId: [Response].[organization].[highOrganizationId]
+            * layerId: [Response].[organization].[layerId]
+        * iat: datetime phát hành JWT
+        * exp: datetime JWT hết hạn
+
+* Lưu [Response].[hasEvaluatedRating] như dưới đây
+    * Trường hợp tồn tại dù chỉ 1 record [movieRating] thỏa tất cả điều kiện dưới đây, lưu `1:Yes`
+        * Data [movieRating] ràng buộc với [movie] có [movie].[ratingTargetUserId] = [user].[id] của login user
+        * [updatedAt] >= sytem datetime (UTC) - 3 năm
+    * Trường hợp khác trên, lưu `0:No`
+
++ Parameters
+    + email: `example@mail.com` (string, required) - Eメール
+    + password: `passwordAbc` (string, required) - パスワード
+
++ Response 200 (application/json)
+    + Attributes (object)
+        + id: `10` (string, required) - ユーザid
+        + name: `userNameAbc` (string, required) - 氏名
+        + email: `example@email.com` (string, required) - email
+        + authority: `2` (string, required) - 権限
+        + imagePath: `CloudFrontURL` (string, optional) - 画像のCloudFrontURL
+        + adminFlag: `1` (string, required) - 管理者フラグ
+        + hasEvaluatedRating: `1` (string, optional) - 評価済み動画の有無
+        + company: (object) - 会社情報
+            + id: `1` (string, required) - 会社id
+            + name: `1` (string, required) - 会社名
+            + skillPaletteFlag: `1` (string, required) - スキルパレット機能フラグ        
+        + organization: (object) - 組織情報
+            + id: `11` (string, optional) - 組織id
+            + name: `営業二課` (string, optional) - 組織名
+            + displayOrder: `1` (string, optional) - 表示順
+            + highOrganizationId: `5` (string, optional) - 上位組織id
+            + layerId: `5` (string, optional) - 階層id
+        + token: (object) - トークン
+            + accessToken: `abcd...` (string, required) - アクセストークン
+            + refreshToken: `af7e035d-...` (string, required) - リフレッシュトークン

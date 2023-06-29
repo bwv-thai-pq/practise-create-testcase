@@ -1,0 +1,37 @@
+## userSearchWithOrganization [/v1/user/organization]
+
+### userSearchWithOrganization [GET]
+
+#### Khái quát xử lý
+
+* Dựa vào [organizationId] của login user, trả về N record [user] ràng buộc với organization và lowOrganizattion của nó
+* Sort theo hạng mục dưới đây rồi trả về
+    * [Response].[id] tăng dần
+
+* Trường hợp thỏa tất cả điều kiện dưới đây, trả lỗi quyền hạn
+    * [authority] của login user = `2:一般ユーザー`
+    * [adminFlag] của login user  != `1:有効`
+
+* Không trả về data thỏa bất kỳ điều kiện nào dưới đây
+    * [user].[status] = `1:無効`
+    * [user].[authority] = `0:システム管理者`
+* Trả về data [user] có [user].[organizationId] = [organizationId] của login user
+* Trả về data [user] có [user].[organizationId] = [organization].[id] của lowOrganization
+    * Get data [organization] của lowOrganization bằng cách giống với cách get [Response].[organization].[lowOrganization] trong API [organizationSearch]
+
++ Parameters
+
++ Response 200 (application/json)
+    + Attributes (array, required, fixed-type)
+        + (object)
+            + id: `1` (string, required) - ユーザid
+            + authority: `1` (string, required) - 権限
+            + name: `userNameAbc` (string, required) - ユーザ名
+            + imagePath: `URL` (string, optional) - 画像のURL
+            + adminFlag: `1` (string, optional) - 管理者フラグ
+            + organization: `8` (object) - 組織情報
+                + id: `1` (string, required) - 組織id
+                + name: `営業部` (string, required) - 組織名
+                + displayOrder: `1` (string, required) - 表示順
+                + highOrganizationId: `1` (string, required) - 上位組織id
+                + layerId: `2` (string, required) - 階層id

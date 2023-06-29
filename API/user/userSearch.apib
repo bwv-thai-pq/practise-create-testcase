@@ -1,0 +1,47 @@
+## userSearch [/v1/user]
+
+### userSearch [GET]
+
+#### Khái quát xử lý
+
+* Trả về N record kết quả của điều kiện search đã nhận
+* Sort theo hạng mục dưới đây rồi trả về
+    * [Response].[id] tăng dần
+
+* Trường hợp [Parameters].[needsAllAuth] = `1:Yes` AND [user].[authority] của login user = `2:一般ユーザー`, trả lỗi quyền hạn
+
+* Chỉ trả về record có [companyId] của login user = [id].[companyId]
+* Data thỏa điều kiện bên dưới không phải là đối tượng trả về
+    * [user].[status] = `1:無効`
+* Trường hợp [Parameters].[needsAllAuth] != `1:Yes`, data thỏa điều kiện bên dưới không phải là đối tượng trả về
+    * [user].[authority] = `0:システム管理者`
+
++ Parameters
+    + authority: `1` (string, optional) - 権限
+    + name: `userNameAbc` (string, optional) - ユーザ名 (Search like)
+    + email: `user.email@example.com` (string, optional) - email
+    + organizationId: `8` (array, optional) - 組織id
+    + needsAllAuth: `8` (string, optional) - 全権限返却   
+    + limit: `30` (string, optional) - 取得件数
+    + offset: `2` (string, optional) - page数
+
++ Response 200 (application/json)
+    + Attributes (array, required, fixed-type)
+        + (object)
+            + id: `1` (string, required) - ユーザid
+            + authority: `1` (string, required) - 権限
+            + name: `userNameAbc` (string, required) - ユーザ名
+            + email: `user.email@example.com` (string, required) - email
+            + status: `0` (string, required) - ステータス
+            + imagePath: `CloudFrontURL` (string, optional) - 画像のCloudFrontURL
+            + adminFlag: `1` (string, optional) - 管理者フラグ
+            + lastLoginAt: `1` (string, optional) - 最終ログイン日時
+            + passwordUpdatedAt: `1` (string, optional) - 最終パスワード更新日時
+            + createdAt: `2020/11/06 12:34:56` (string, required) - 登録日時
+            + updatedAt: `2020/11/06 12:34:56` (string, required) - 更新日時
+            + organization: `8` (object) - 組織情報
+                + id: `1` (string, required) - 組織id
+                + name: `営業部` (string, required) - 組織名
+                + displayOrder: `1` (string, required) - 表示順
+                + highOrganizationId: `1` (string, required) - 上位組織id
+                + layerId: `2` (string, required) - 階層id

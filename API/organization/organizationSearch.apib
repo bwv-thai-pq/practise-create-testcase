@@ -1,0 +1,55 @@
+## organizationSearch [/v1/organization]
+
+### organizationSearch [GET]
+
+#### Khái quát xử lý
+
+* Trả về N record kết quả 
+    * Chỉ trả về record có [companyId] của login user = [id].[companyId] 
+    * X-Total-Count thì bất kể mối quan hệ cha con của high/low organization, trả về số record data [Organization] đối tượng
+
+* Sort theo hạng mục dưới đây rồi trả về 
+    * Trường hợp [Parameters].[sort] = `desc`
+        * Mảng [Response].[organization], [organization].[displayOrder] giảm dần
+        * Mảng [Response].[organization].[lowOrganization]
+            * [organization].[displayOrder] giảm dần
+            * [lowOrganization] bên dưới cũng tương tự
+    * Trường hợp ngược lại 
+        * Mảng [Response].[organization], [organization].[displayOrder] tăng dần
+        * Mảng [Response].[organization].[lowOrganization]
+            * [organization].[displayOrder] tăng dần
+            * [lowOrganization] bên dưới cũng tương tự
+
+* [Response].[organization]
+    * Trả về data [organization] có [organization].[highOrganizationId] = `null` vào ngay bên dưới
+    * [Response].[organization].[lowOrganization]
+        * Trả về data ràng buộc với [Response].[organization].[id](của organization cấp cao hơn) = [organization].[highOrganizationId] 
+            * Tiếp theo nếu tồn tại data ràng buộc [organization].[highOrganizationId], cũng trả về data organization cấp thấp hơn vào field [lowOrganization] với format tương tự
+            * Trường hợp không tồn tại data cấp thấp hơn nữa thì trả `null`
+
++ Parameters
+    + layerId: `5` (string, optional) - 階層id
+    + sort: `asc` (string, optional) - ソート順
+
++ Response 200 (application/json)
+    + Attributes (array, required, fixed-type)
+        + (object)
+            + id: `1` (string, required) - 組織id
+            + name: `organizationNameAbc` (string, required) - 組織名
+            + displayOrder: `3` (string, required) - 表示順
+            + layer: (object) - 階層情報
+                + id: `1` (string, required) - 階層id
+                + name: `layerNameAbc` (string, required) - 階層名
+            + highOrganizationId: `72` (string, optional) - 上位組織id
+            + highOrganizationName: `highOrganizationNameAbc` (string, optional) - 上位組織名
+            + lowOrganization: (array, optional, fixed-type) - 下位組織情報
+                + (object)
+                    + id: `1` (string, required) - 組織id
+                    + name: `organizationNameAbc` (string, required) - 組織名
+                    + displayOrder: `3` (string, required) - 表示順
+                    + layer: (object) - 階層情報
+                        + id: `1` (string, required) - 階層id
+                        + name: `layerNameAbc` (string, required) - 階層名
+                    + highOrganizationId: `72` (string, optional) - 上位組織id
+                    + highOrganizationName: `highOrganizationNameAbc` (string, optional) - 上位組織名
+                    + lowOrganization: (array, optional, fixed-type) - 下位組織情報

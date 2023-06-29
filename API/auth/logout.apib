@@ -1,0 +1,19 @@
+## logout [/v1/auth/logout]
+
+### logout [POST]
+
+#### Khái quát xử lý
+* Xóa vật lý [refreshToken] đã nhận
+
+* Trường hợp refreshToken đã chỉ định không tồn tại trong bảng refreshToken, trả status 204, không làm gì cả
+
+* Trường hợp refreshToken đã chỉ định có [refreshToken].[userId] != [user].[id] của login user, trả lỗi `[invalidTokenError]`
+
+* DELETE như bên dưới 
+    * Data [refreshToken] của refreshToken đã chỉ định
+
++ Parameters
+    + refreshToken: `af7e035d-...` (string, required) - リフレッシュトークン
+
++ Response 204
+    + Attributes

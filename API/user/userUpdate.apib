@@ -1,0 +1,101 @@
+## userUpdate [/v1/user/:id]
+
+### userUpdate [PUT]
+
+#### Khái quát xử lý
+
+* UPDATE thông tin của id được chỉ định
+
+* Trường hợp thỏa bất kỳ điều kiện nào dưới đây, trả lỗi quyền hạn
+    * [user].[companyId] của [Parameters].[id] != [companyId] của login user
+    * [organization].[companyId] của [Parameters].[organizationId] != [companyId] của login user
+    * [group].[companyId] của [Parameters].[userGroupIdList] != [companyId] của login user
+    * [group].[companyId] của [Parameters].[defaultPublicGroupIdList] != [companyId] của login user
+* Trường hợp [Parameters].[myPageFlag] = `1:Yes` AND thỏa bất kỳ điều kiện nào dưới đây, trả lỗi quyền hạn
+    * [Parameters].[id] != [id] của login user
+    * [Parameters].[authority] != blank
+    * [Parameters].[organizationId] != blank
+    * [Parameters].[mailDeliveryPermit] != blank
+    * [Parameters].[adminFlag] != blank
+* Trường hợp [Parameters].[myPageFlag] != `1:Yes`
+    * Trường hợp [authority] của login user = `2:一般ユーザー`, trả lỗi quyền hạn
+    * Trường hợp [authority] của login user = `1:組織管理者` AND thỏa bất kỳ điều kiện nào dưới đây, trả lỗi quyền hạn
+        * [Parameters].[id].[user].[authority] = `0:システム管理者`
+        * [Parameters].[authority] = `0:システム管理者`
+        * [Parameters].[mailDeliveryPermit] != blank
+        * [Parameters].[adminFlag] != blank
+    * Trường hợp [authority] của login user = `0:システム管理者` AND bất kỳ hạng mục nào dưới đây bị blank, trả lỗi required
+        * [Parameters].[mailDeliveryPermit]
+        * [Parameters].[adminFlag]
+    * Trường hợp bất kỳ hạng mục nào dưới đây bị blank, trả lỗi required
+        * [Parameters].[authority]
+        * [Parameters].[organizationId]
+* Trường hợp tồn tại cùng [email] khác với data của chính mình thì trả lỗi `[duplicateValueError]`
+    * Trường hợp trùng với data bị xóa logic (có [user].[status] = `1:無効`) thì cũng trả lỗi trên
+
+* Trường hợp [Parameters].[image] != blank
+    * Get file của [Parameters].[imageFile]
+    * Trường hợp format file không phải png, jpeg, jpg thì trả lỗi `[imageUploadTypeError]`
+    * Trường hợp file size vượt quá giới hạn(giá trị biến số môi trường {IMAGE_UPLOAD_SIZE_LIMIT}), trả lỗi `[imageUploadSizeError]`
+    * Trường hợp khi lưu file lên S3 mà kết thúc lỗi, trả lỗi `[fileUploadS3Error]`
+        * Đặt lại tên file đã nhận thành S3FilePath kết hợp theo quy tắc dưới đây, set vào s3 bucket biến số môi trường {S3_BUCKET}
+            * Biến số môi trường{S3_PATH_COMMON}
+            * `/` + biến số môi trường{S3_PATH_USER}
+            * `/` + [Response].[id]
+            * `/image_` + timestamp dưới dạng yyyymmddhhmmss(UTC) + đuôi file của [Parameters].[file] 
+        * Ví dụ của S3FilePath：`common/user/777/image_20201207191108.jpg`
+
+* UPDATE như bên dưới
+    * Data [user] của [Parameters].[id]
+        * [name] = [Parameters].[name]
+        * [email] = [Parameters].[email]
+        * [password], [passwordUpdatedAt]
+            * Trường hợp [Parameters].[password] = blank, không thay đổi giá trị ban đầu
+            * Trường hợp [Parameters].[password] != blank, lưu [user].[password] = [Parameters].[password] đã hash, [user].[passwordUpdatedAt] = system datetime (UTC)
+        * [image]
+            * Trường hợp [Parameters].[imageFile] != blank, lưu S3FilePath đã set
+            * Trường hợp [Parameters].[imageFile] = blank AND [Parameters].[needsImageDelete] = `1:Yes`, lưu `null`
+        * Trường hợp [Parameters].[myPageFlag] = `1:Yes`, không UPDATE các cột sau (trường hợp != `1:Yes` thì UPDATE)
+            * [authority] = [Parameters].[authority]
+            * [organizationId] = [Parameters].[organizationId]
+            * [adminFlag] = [Parameters].[adminFlag]
+            * [mailDeliveryPermit] = [Parameters].[mailDeliveryPermit]
+* Trường hợp [Parameters].[myPageFlag] = `1:Yes`, không tiến hành INSERT or DELETE như dưới đây (trường hợp != `1:Yes` thì tiến hành)
+    * Data [userGroup]
+        * DETELE data [userGroup] có [userGroup].[userId] = [Parameters].[id]
+        * INSERT số record bằng với số phần tử trong mảng [Parameters].[userGroupIdList]
+            * [userId] = [Parameters].[id]
+            * [groupId] = [Parameters].[userGroupIdList] tương ứng
+    * Data [defaultPublicGroup]
+        * DELETE data [defaultPublicGroup] có [defaultPublicGroup].[userId] = [Parameters].[id]
+        * INSERT số record bằng với số phần tử trong mảng [Parameters].[defaultPublicGroupIdList]
+            * [userId] = [Parameters].[id]
+            * [groupId] = [Parameters].[defaultPublicGroupIdList] tương ứng
+    * Data [movieUser]
+        * DELETE data có [movieUser].[userId] = [Parameters].[id] AND [movieUser].[movieGroupId] != `null`
+        * INSERT số record [movieUser] bằng với số record [movieGroup] có [movieGroup].[groupId] = [userGroup].[groupId] ràng buộc với [Parameters].[id] và thỏa tất cả điều kiện dưới đây
+             * [movie].[companyId] ràng buộc với [movieGroup].[movieId] trên = [user].[companyId] của [Parameters].[id]
+             * [movie].[publicFlag] ràng buộc với [movieGroup].[movieId] trên != 1
+             * Nội dung INSERT
+                 * [movieId] = [movie].[id] của data tương ứng
+                 * [userId] = [Parameters].[id]
+                 * [movieCompanyId] = `null`
+                 * [movieGroupId] = [movieGroup].[id] của data tương ứng
+
++ Parameters
+    + id: `1' (string, required) - ユーザid
+    + authority: `1` (string, optional) - 権限
+    + name: `userNameAbc` (string, required) - ユーザ名
+    + email: `user.email@example.com` (string, required) - Eメール
+    + password: `passwordAbc` (string, optional) - パスワード
+    + imageFile: `binary file` (string, optional) - 画像ファイル
+    + needsImageDelete: `1` (string, optional) - 画像削除フラグ
+    + organizationId: `8` (string, optional) - 組織id
+    + adminFlag: `1` (string, optional) - 管理者フラグ
+    + mailDeliveryPermit: `1` (string, optional) - メール配信許可フラグ
+    + userGroupIdList: (array, optional) - ユーザグループidリスト
+    + defaultPublicGroupIdList: (array, optional) - デフォルト公開グループidリスト
+    + myPageFlag: `1' (string, optional) - マイページフラグ
+
++ Response 204
+    + Attributes

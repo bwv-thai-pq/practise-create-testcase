@@ -1,0 +1,28 @@
+## refreshToken [/v1/auth/refreshToken]
+
+### refreshToken [POST]
+
+#### Khái quát xử lý
+
+* Dựa vào [refreshToken] đã nhận để update [accessToken] rồi trả về
+
+* Trường hợp refreshToken đã chỉ định không tồn tại, trả lỗi `[invalidTokenError]`
+* Trường hợp refreshToken đã chỉ định có [refreshToken].[updateAt] + biến môi trường {REFRESH_TOKEN_MAX_AGE} < ngày giờ hiện tại, trả lỗi `[invalidTokenError]`
+* Trường hợp [user] ràng buộc với refreshToken đã chỉ định có [user].[status] = `1:無効`, trả lỗi `[invalidTokenError]`
+* Trường hợp [user] ràng buộc với refreshToken đã chỉ định có [user].[authority] != 0 or 1 or 2, trả lỗi `[dataMismatchingError]`
+
+* UPDATE như bên dưới
+    * Data [refreshToken] của refreshToken đã chỉ định
+        * [updatedAt] = system datetime (UTC)
+
+* Payload của [accessToken]
+    * Tham chiếu API [login] (xử lý chung)
+
+* [Response].[accessToken] = [accessToken] đã update
+
++ Parameters
+    + refreshToken: `af7e035d-...` (string, required) - リフレッシュトークン
+
++ Response 200 (application/json)
+    + Attributes (object)
+        + accessToken: `abcd...` (string, required) - アクセストークン

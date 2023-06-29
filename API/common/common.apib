@@ -1,0 +1,63 @@
+# Group common
+
+## common [/v1/]
+
+### common [GET]
+
+#### Khái quát xử lý
+* Dựa trên thông tin TOKEN để phán đoán user có quyền truy cập API hay không
+* Không chỉ phương thức GET và áp dụng chung cho toàn bộ (vì nếu không chỉ định thì sẽ bị bể format)
+* Chỉ có API `auth/login`, `auth/refreshToken` khi gọi API không cần phải login
+* API Search thì lưu số data kết quả search vào Response.Header `X-Total-Count` rồi trả về
+* Trường hợp phát sinh lỗi kiểu như 400 thì trả về error code và error message
+    * Trường hợp trong thiết kế riêng của từng API có ghi "lỗi quyền hạn", thì hiểu là trả lỗi `[authError]` (status là 400)
+        * Lỗi này khác với lỗi 403 phát sinh khi chạy API bằng quyền hạn mà hoàn toàn không có quyền truy cập API
+    * Đối với các API có lưu DB như Create/ Update, nếu giá trị của Parameters và giá trị trong DB không khớp nhau nên không thể lưu data thì thực hiện rollback data đã lưu giữa chừng.
+        * Tuy nhiên, nếu trong tài liệu có mô tả "dù phát sinh lỗi vẫn thực hiện lưu data", v.v.. thì ưu tiên làm theo mô tả trong tài liệu.
+        * Trả tên trường có giá trị không khớp vào error message (Ví dụ:`存在しない(tên trường (tên logic))です`)
+    * Trường hợp PRIMARY KEY hoặc FOREIGN KEY được chỉ định ở Parameters không tồn tại trong DB thì trả về error `[notFoundParameterError]`
+        * Tuy nhiên, trường hợp tài liệu có mô tả đặc biệt khi không tồn tại thì ưu tiên làm theo mô tả trong tài liệu.
+    * Trường hợp không thể xử lý do giá trị lưu trong DB nằm ngoài định nghĩa (ví dụ lưu `2` ở column có định nghĩa `0:No`,`1:Yes`) thì trả về error `[dataMismatchingError]`
+    * Trường hợp gửi giá trị không được định nghĩa (trong Khái quát xử lý hoặc trong list giá trị trong DB), trả về error `[undefinedValueError]`
+        * Ví dụ như chỉ định nghĩa list giá trị của hạng mục là `0:No`, `1:Yes` nhưng lại gửi `2`
+* Lỗi 401: Là lỗi TOKEN, nên trường hợp xảy ra lỗi chứng thực thì trả về error code và error message
+* Lỗi 403: Trường hợp truy cập vào URL mà không có quyền hạn truy cập thì trả về error code và error message
+    * Trả trong trường hợp chạy API bằng quyền hạn mà hoàn toàn không có quyền truy cập API đó, theo như quyền hạn ghi trong tài liệu danh sách API
+* Lỗi 404: Trường hợp truy cập vào URL không có sẵn thì trả về error code và error message
+* Lỗi 500: Lỗi server nội bộ
+
+#### Về xử lý file path và S3 bucket
+* Trường hợp insert vào DB, lưu S3FilePath
+    * Ví dụ: `common/user/777/image_20201207191108.jpg`
+* Trường hợp get từ DB để trả về, tạo CloudFront URL rồi trả về 
+    * Ví dụ: `https://xxxxxx.cloudfront.net/movie/777/movie.mp4`
+
+#### Request/Response
++ Request (application/x-www-form-urlencoded)
+    + Headers
+        + Authorization: JWT XXXXXXXXXXXXXX
+
++ Response 400 (application/json)
+    + Attributes (object)
+        + errors (array, required, fixed-type)
+            + `(tên hạng mục)の最大文字数は100文字です` (string, required) - メッセージ
+
++ Response 401 (application/json)
+    + Attributes (object)
+        + errors (array, required, fixed-type)
+            + `認証エラー` (string, required) - メッセージ
+
++ Response 403 (application/json)
+    + Attributes (object)
+        + errors (array, required, fixed-type)
+            + `権限がないURLです` (string, required) - メッセージ
+
++ Response 404 (application/json)
+    + Attributes (object)
+        + errors (array, required, fixed-type)
+            + `Not Found URL` (string, required) - メッセージ
+
++ Response 500 (application/json)
+    + Attributes (object)
+        + errors (array, required, fixed-type)
+            + `ERROR` (string, required) - メッセージ

@@ -1,0 +1,27 @@
+## movieRecommendUpdate [/v1/movie/recommend/:id]
+
+### movieRecommendUpdate [PATCH]
+
+#### Khái quát xử lý
+
+* UPDATE thông tin của id đã chỉ định
+
+* Trường hợp [companyId] của login user != [Parameters].[id].[companyId], trả lỗi quyền hạn
+* Trường hợp [movie].[status] của id đã chỉ định = `2:削除`, trả lỗi `[movieDeletedError]`
+* Trường hợp [movie].[commonMovieFlag] của id đã chỉ định = `1:有効`, trả lỗi `[commonMovieNotArrowedError]`
+
+* UPDATE data [movie] của id đã chỉ định
+    * Trường hợp [Parameters].[recommend] = `0:No`
+        * [recommend] = `0:No`
+        * [recommendDisplayOrder] = `null`
+    * Trường hợp [Parameters].[recommend] = `1:Yes`, AND [movie].[recommend] của id đã chỉ định != `1:Yes`
+      * [recommend] = `1:Yes`
+      * [recommendDisplayOrder] = Giá trị [recommendDisplayOrder] lớn nhất đang tồn tại có cùng [companyId] + 1
+    * Trường hợp khác trên thì không làm gì và trả về status thành công
+
++ Parameters
+    + id: `2` (string, required) - 動画id
+    + recommend: `1` (string, required) - おすすめ
+
++ Response 204
+    + Attributes

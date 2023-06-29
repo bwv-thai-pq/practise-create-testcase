@@ -1,0 +1,32 @@
+## movieDelete [/v1/movie/:id]
+
+### movieDelete [DELETE]
+
+#### Khái quát xử lý
+
+* Xóa logic id đã chỉ định
+
+* Trường hợp [companyId] của login user != [Parameters].[id].[companyId], trả lỗi quyền hạn 
+* Trường hợp [authority] của login user != `0:システム管理者` và thỏa điều kiện dưới đây, trả lỗi quyền hạn 
+    * [movie].[commonMovieFlag] của id đã chỉ định = `1:有効`
+* Trường hợp [authority] của login user = `2:一般ユーザー` và không thỏa điều kiện dưới đây, trả lỗi quyền hạn
+    * [movie].[createdBy] của id đã chỉ định = [id] của login user
+* Trường hợp [movie].[status] của id đã chỉ định = `2:削除`, trả lỗi `[movieDeletedError]`
+
+* UPDATE như bên dưới
+    * Data [movie] của id đã chỉ định
+        * [status] = `2:削除`
+
+* DELETE data trong các bảng dưới đây mà ràng buộc với id đã chỉ định 
+    * [movieCompany]
+    * [movieGroup]
+    * [movieUser]
+    * [movieTag]
+    * [relatedMovie]
+        * Trường hợp [movieId] hoặc [relatedMovieId] là id đã chỉ định
+
++ Parameters
+    + id: `4` (string, required) - 動画id
+
++ Response 204
+    + Attributes

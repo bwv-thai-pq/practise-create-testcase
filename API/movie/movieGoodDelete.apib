@@ -1,0 +1,22 @@
+## movieGoodDelete [/v1/movie/good/:movieId]
+
+### movieGoodDelete [DELETE]
+
+#### Khái quát xử lý
+
+* Xóa vật lý id đã chỉ định
+
+* Trường hợp [companyId] của login user != [movie].[companyId] của movieId đã chỉ định, trả lỗi quyền hạn
+* Trường hợp [movie].[status] của movieId đã chỉ định = `2:削除`, trả lỗi `[movieDeletedError]`
+* Trường hợp không tồn tại [movieGood] (ràng buộc với movieId đã chỉ định) có [movieGood].[createdBy] = [user].[id] của login user, không làm gì cả và trả về status thành công
+
+* DELETE như bên dưới
+    * Data [movieGood] thỏa toàn bộ điều kiện dưới đây
+        * [movieGood] ràng buộc với movieId đã chỉ định
+        * [movieGood].[createdBy] (ràng buộc với movieId đã chỉ định) = [user].[id] của login user
+
++ Parameters
+    + movieId: `4` (string, required) - 動画id
+
++ Response 204
+    + Attributes

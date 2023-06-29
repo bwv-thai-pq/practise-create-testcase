@@ -1,0 +1,25 @@
+## userDelete [/v1/user/:id]
+
+### userDelete [DELETE]
+
+#### Khái quát xử lý
+
+* Xóa logic id đã chỉ định
+
+* Trường hợp [user].[companyId] của [Parameters].[id] != [companyId] của login user, trả lỗi quyền hạn
+* Trường hợp thỏa tất cả điều kiện dưới đây, trả lỗi quyền hạn
+    * [user].[authority] của login user != `0:システム管理者`
+    * [user].[authority] của id đã chỉ định = `0:システム管理者`
+
+* UPDATE như bên dưới
+    * Data [user] của id đã chỉ định
+        * [status] = `1:無効`
+
+* DELETE như bên dưới
+    * Data [refreshToken] có [refreshToken].[userId] = [Parameters].[id] 
+
++ Parameters
+    + id: 1 (string, required) - ユーザid
+
++ Response 204
+    + Attributes

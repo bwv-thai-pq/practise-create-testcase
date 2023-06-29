@@ -1,0 +1,89 @@
+# Group user
+
+## userCreate [/v1/user]
+
+### userCreate [POST]
+
+#### Khái quát xử lý
+
+* INSERT bằng thông tin đã nhận
+
+* Trường hợp thỏa bất kỳ điều kiện nào dưới đây, trả lỗi quyền hạn
+    * [organization].[companyId] của [Parameters].[organizationId] != [companyId] của login user
+    * [group].[companyId] của [Parameters].[userGroupIdList] != [companyId] của login user
+    * [group].[companyId] của [Parameters].[defaultPublicGroupIdList] != [companyId] của login user
+    * [user].[authority] của login user != `0:システム管理者` AND [Parameters].[authority] = `0:システム管理者`
+* Trường hợp [email] đã được đăng ký, trả lỗi `[duplicateValueError]`
+    * Trường hợp trùng với data bị xóa logic (có [user].[status] = `1:無効`) thì cũng trả lỗi trên
+* Trong những [user] đang lưu trong DB có [companyId] = [companyId] của login user, get số data có [status] = `0:有効` AND [authority] != `0:システム管理者`
+    * Trường hợp số data get được >= [company].[userNumber] ràng buộc với [companyId] của login user, trả lỗi `[userNumberError]`
+
+* INSERT như bên dưới
+    * Data [user]
+        * [authority] = [Parameters].[authority]
+        * [name] = [Parameters].[name]
+        * [email] = [Parameters].[email]
+        * [password] = [Parameters].[password] đã hash
+        * [imageFile] = `null`
+        * [organizationId] = [Parameters].[organizationId]
+        * [status] = `0:有効`
+        * [companyId] = [companyId] của login user
+        * [adminFlag] = [Parameters].[adminFlag]
+            * Trường hợp rỗng, lưu `0:無効`
+        * [mailDeliveryPermit] = [Parameters].[mailDeliveryPermit]
+            * Trường hợp rỗng, lưu `1:有効`
+    * Data [userGroup]: INSERT số record bằng với số phần tử trong mảng [Parameters].[userGroupIdList]
+        * [userId] = [user].[id] mới INSERT lần này
+        * [groupId] = [Parameters].[userGroupIdList] tương ứng
+    * Data [defaultPublicGroup]: INSERT số record bằng với số phần tử trong mảng [Parameters].[defaultPublicGroupIdList]
+        * [userId] = [user].[id] mới INSERT lần này
+        * [groupId] = [Parameters].[defaultPublicGroupIdList] tương ứng
+    * Xử lý lưu [movieUser]
+        * Data [movieUser]: INSERT data thỏa bất kỳ điều kiện nào dưới đây (Trường hợp thỏa nhiều điều kiện, chỉ INSERT số record bằng với số điều kiện tương ứng)
+            * Get [movieCompany] có [movieCompany].[companyId] = [companyId] của login user
+                * INSERT số record [movieUser] bằng với số record [movieCompany] get được, nội dung INSERT như dưới đây
+                    * [movieId] = [movieCompany].[movieId] của data tương ứng
+                    * [userId] = [user].[id] mới INSERT lần này
+                    * [movieCompanyId] = [movieCompany].[id] của data tương ứng
+                    * [movieGroupId] = `null`
+            * Trường hợp khác, mà [movie].[companyId] = [companyId] của login user AND thỏa điều kiện dưới đây
+                * Trường hợp tồn tại [movie] có [movie].[publicFlag] = `1:有効`, INSERT như dưới đây
+                    * [movieId] = [movie].[id] của data tương ứng
+                    * [userId] = [user].[id] mới INSERT lần này
+                    * [movieCompanyId] = `null`
+                    * [movieGroupId] = `null`
+                * Trường hợp tồn tại data [movieGroup] có [movieGroup].[groupId] = [userGroup].[groupId] ràng buộc với bản thân AND [movie].[publicFlag] ràng buộc với [movieGroup].[movieId] != `1:有効`, INSERT số record [movieUser] bằng với số record [movieGroup] get được, nội dung INSERT như dưới đây
+                    * [movieId] = [movie].[id] của data tương ứng
+                    * [userId] = [user].[id] mới INSERT lần này
+                    * [movieCompanyId] = `null`
+                    * [movieGroupId] = [movieGroup].[id] của data tương ứng
+
+* Trường hợp [Parameters].[imageFile] != blank
+    * Get file của [Parameters].[imageFile]
+    * Trường hợp format file không phải png, jpeg, jpg thì trả lỗi `[imageUploadTypeError]`
+    * Trường hợp file size vượt quá giới hạn (giá trị biến môi trường {IMAGE_UPLOAD_SIZE_LIMIT}), trả lỗi `[imageUploadSizeError]`
+    * Trường hợp khi lưu file lên S3 mà kết thúc lỗi, trả lỗi `[fileUploadS3Error]`
+        * Đặt lại tên file đã nhận thành S3FilePath đã kết hợp theo quy tắc dưới đây, set vào S3 bucket biến môi trường {S3_BUCKET}
+            * Biến môi trường {S3_PATH_COMMON}
+            * `/` + biến môi trường {S3_PATH_USER}
+            * `/` + [Response].[id]
+            * `/image_` + timestamp dưới dạng yyyymmddhhmmss(UTC) + đuôi file của [Parameters].[file] 
+        * Ví dụ của S3FilePath：`common/user/777/image_20201207191108.jpg`
+    * UPDATE như dưới đây đối với data đã INSERT
+        * [user].[imageFile] = S3FilePath đã set
+
++ Parameters
+    + authority: `1` (string, required) - 権限
+    + name: `userNameAbc` (string, required) - ユーザ名
+    + email: `user.email@example.com` (string, required) - Eメール
+    + password: `passwordAbc` (string, required) - パスワード
+    + imageFile: `binary file` (string, optional) - 画像ファイル
+    + organizationId: `8` (string, required) - 組織id
+    + adminFlag: `1` (string, optional) - 管理者フラグ
+    + mailDeliveryPermit: `1` (string, optional) - メール配信許可フラグ
+    + userGroupIdList: (array, optional) - ユーザグループidリスト
+    + defaultPublicGroupIdList: (array, optional) - デフォルト公開グループidリスト
+
++ Response 201 (application/json)
+    + Attributes (object)
+        + id: 1 (string, required) - ユーザid
